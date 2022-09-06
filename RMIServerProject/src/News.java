@@ -1,4 +1,6 @@
-public class News {
+import java.io.Serializable;
+
+public class News implements Serializable{
     private String uniqueName, headline, author, content;
     private java.sql.Timestamp creationDate, lastModificationDate;
     public String getUniqueName() {
@@ -36,6 +38,10 @@ public class News {
     }
     public void setLastModificationDate(java.sql.Timestamp lastModificationDate) {
         this.lastModificationDate = lastModificationDate;
+    }
+    @Override
+    public String toString() {
+        return "CODIGO: " + uniqueName + "\tAUTOR: " + author + "\tTITULAR: " + headline + "\tCONTENIDO: " + content + "\tFECHA DE CREACIÓN: " + creationDate.toString() + "\tÚLTIMA MODIFICACIÓN" + lastModificationDate.toString();
     }
     
 }

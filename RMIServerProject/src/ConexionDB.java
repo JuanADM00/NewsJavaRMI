@@ -1,20 +1,47 @@
+import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.rmi.RemoteException;
-import java.sql.Connection;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-public class ConexionDB implements IController<News> {
+/*import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
+import javax.sql.DataSource;
+import com.mysql.cj.jdbc.MysqlDataSource;*/
+public class ConexionDB implements IController, Serializable{
     protected Connection conn;
     protected Statement sentencia;
     protected ResultSet resultSet;
+    //protected String driver, user, password, url;
     protected static final String driver = "com.mysql.cj.jdbc.Driver", user = "root", password = "Jpad18UPB*",
             url = "jdbc:mysql://localhost:3306/AMAYANEWS";
     protected List<News> newsList = null;
+    //protected DataSource dataSource;
+
+    /*private DataSource getMySQLDataSource() {
+		Properties props = new Properties();
+		FileInputStream fis = null;
+		DataSource mysqlDS = null;
+		try {
+			fis = new FileInputStream("dbProperties.properties");
+			props.load(fis);
+			driver = props.getProperty("MYSQL_DB_DRIVER_CLASS");
+            url = props.getProperty("MYSQL_DB_URL");
+			user = props.getProperty("MYSQL_DB_USERNAME");
+			password = props.getProperty("MYSQL_DB_PASSWORD");
+            mysqlDS = new MysqlDataSource();
+			mysqlDS.setURL(url);
+			mysqlDS.setUser(user);
+			mysqlDS.setPassword(password);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return mysqlDS;
+	}*/
 
     public ConexionDB() {
         conn = null;
@@ -29,18 +56,10 @@ public class ConexionDB implements IController<News> {
         }
     }
 
-    public Connection getConn() {
-        return conn;
-    }
-
-    public Statement getSentencia() {
-        return sentencia;
-    }
-
     public ResultSet getResultSet() {
         return resultSet;
     }
-
+    
     private void cerrarResult() {
         try {
             resultSet.close();
@@ -104,6 +123,21 @@ public class ConexionDB implements IController<News> {
         return existe;
     }
 
+    private int getID(String username) {
+        int id = -1;
+        String query = "SELECT ID FROM USERS WHERE USERNAME ='" + username + "'";
+        try {
+            ejecutarConsulta(query);
+            if (resultSet.next()) {
+                ResultSet rs = getResultSet();
+                id = rs.getInt("ID");
+            }
+            return id;
+        } catch (Exception e) {
+            return id;
+        }
+    }
+
     @Override
     public int login(String username, String password) {
         String query = "SELECT ID, USERNAME, TYPE FROM USERS WHERE USERNAME ='" + username + "' AND PASSWORD ='"
@@ -126,10 +160,11 @@ public class ConexionDB implements IController<News> {
     }
 
     @Override
-    public boolean createNews(int uid, String headline, String content) throws RemoteException {
+    public boolean createNews(String username, String headline, String content) throws RemoteException {
         String uniqueName = randomUniqueName();
+        int uid = getID(username);
         boolean succesful = false;
-        if (!existeValor(uniqueName, "UNIQUENAME", "NEWS")) {
+        if (!existeValor(uniqueName, "UNIQUENAME", "NEWS") && uid > 0) {
             String commandAction = "INSERT INTO NEWS (UNIQUENAME, HEADLINE, CONTENT, AUTHOR) VALUES (?, ?, ?, ?)";
             try {
                 PreparedStatement ps = conn.prepareStatement(commandAction);
@@ -173,8 +208,10 @@ public class ConexionDB implements IController<News> {
     public List<News> getNewsList() throws RemoteException {
         if (newsList.equals(null)) {
             newsList = new ArrayList<News>();
+        } else {
+            newsList.clear();
         }
-        String query = "SELECT NEWS.UNIQUENAME AS CODIGO_NOTICIA, NEWS.HEADLINE AS TITULAR, USERS.USERNAME AS AUTOR, NEWS.CONTENT AS CONTENIDO, NEWS.CREATIONDATE AS FECHA_DE_CREACION, NEWS.LASTMODIFICATIONDATE AS ULTIMA_MODIFICACION FROM NEWS, USERS WHERE NEWS.AUTHOR = USERS.UID ORDER BY NEWS.UNIQUENAME;";
+        String query = "SELECT NEWS.UNIQUENAME AS CODIGO_NOTICIA, NEWS.HEADLINE AS TITULAR, USERS.USERNAME AS AUTOR, NEWS.CONTENT AS CONTENIDO, NEWS.CREATIONDATE AS FECHA_DE_CREACION, NEWS.LASTMODIFICATIONDATE AS ULTIMA_MODIFICACION FROM NEWS, USERS WHERE NEWS.AUTHOR = USERS.ID ORDER BY NEWS.UNIQUENAME;";
         try {
             ejecutarConsulta(query);
             while (resultSet.next()) {
@@ -195,32 +232,7 @@ public class ConexionDB implements IController<News> {
     }
 
     @Override
-    public List<News> getNewsList(String author) throws RemoteException {
-        if (newsList.equals(null)) {
-            newsList = new ArrayList<News>();
-        } else {
-            newsList.clear();
-        }
-        newsList = getNewsList();
-        if (!newsList.equals(null)) {
-            List<News> copy = new ArrayList<News>();
-            for (News news : newsList) {
-                if (news.getAuthor().toUpperCase().equals(author.toUpperCase())) {
-                    copy.add(news);
-                }
-            }
-            return copy;
-        }
-        return null;
-    }
-
-    @Override
     public List<News> getNewsList(String value, int option) throws RemoteException {
-        if (newsList.equals(null)) {
-            newsList = new ArrayList<News>();
-        } else {
-            newsList.clear();
-        }
         newsList = getNewsList();
         if (!newsList.equals(null)) {
             List<News> copy = new ArrayList<News>();
@@ -249,7 +261,7 @@ public class ConexionDB implements IController<News> {
                         }
                     }
                     return copy;
-                case 3:// Autor (diferente a uno mismo)
+                case 3:// Autor
                     for (News news : newsList) {
                         if (news.getAuthor().toUpperCase().equals(value.toUpperCase())) {
                             copy.add(news);
