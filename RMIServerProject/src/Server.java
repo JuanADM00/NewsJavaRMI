@@ -10,7 +10,7 @@ public class Server {
 		try {
 			ConexionDB service = new ConexionDB();
 			LocateRegistry.createRegistry(PORT);
-			Naming.rebind("//127.0.0.1:" + Integer.toString(PORT) + "/service", service);
+			Naming.rebind("//127.0.0.1:" + Integer.toString(PORT) + "/service",service);
 			System.out.println("Servidor escuchando en el puerto " + String.valueOf(PORT));
 		} catch (RemoteException|MalformedURLException e) {
 			e.printStackTrace();
